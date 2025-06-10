@@ -63,7 +63,7 @@ if st.button("Predict"):
     # SHAP explanation
     explainer = shap.Explainer(model)
     shap_values = explainer(input_df)
-    st.set_option('deprecation.showPyplotGlobalUse', False)
+    #st.set_option('deprecation.showPyplotGlobalUse', False)
     st.subheader("Feature Impact Explanation:")
     shap.plots.waterfall(shap_values[0])
     st.pyplot()
