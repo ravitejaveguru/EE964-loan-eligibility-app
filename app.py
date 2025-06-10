@@ -5,13 +5,25 @@ import shap
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Load the trained XGBoost model from JSON
+# Load the trained XGBoost model
 model = xgb.XGBClassifier()
 model.load_model("model.json")
 
-# Streamlit app setup
+# Feature explanations dictionary (for user-friendly reasons)
+feature_reason_map = {
+    "Credit_History": {
+        0: "No credit history available",
+        1: "Good credit history"
+    },
+    "TotalIncome": "Low total income",
+    "LoanAmount": "Requested loan amount is high",
+    "Property_Area_Semiurban": "Semiurban property may impact eligibility",
+    "Education_Not Graduate": "Not being a graduate may reduce approval chances",
+}
+
 st.set_page_config(page_title="Loan Eligibility Prediction", layout="wide")
-st.title("🏦 Loan Eligibility Prediction with Explainable AI")
+st.title("\U0001F3E6 Loan Eligibility Prediction with Explainable AI")
+
 st.write("Fill in applicant details to check loan eligibility and explanation.")
 
 # Input form
@@ -57,15 +69,31 @@ input_df = pd.DataFrame(input_dict)
 # Predict and explain
 if st.button("Predict"):
     prediction = model.predict(input_df)[0]
-    prediction_text = "✅ Loan Approved" if prediction == 1 else "❌ Loan Rejected"
+    prediction_text = "\u2705 Loan Approved" if prediction == 1 else "\u274C Loan Rejected"
     st.subheader(f"Prediction: {prediction_text}")
 
-    # SHAP explanation using a safe plotting method
-    st.subheader("Feature Impact Explanation:")
+    # SHAP explanation using safe plotting
     explainer = shap.Explainer(model)
     shap_values = explainer(input_df)
 
-    # Create the SHAP summary plot as a figure and show it
-    fig, ax = plt.subplots()
-    shap.plots.waterfall(shap_values[0], show=False)
-    st.pyplot(fig)
+    # Extract top contributing features
+    shap_impact = shap_values.values[0]
+    feature_names = input_df.columns
+    top_features = sorted(zip(feature_names, shap_impact), key=lambda x: abs(x[1]), reverse=True)[:3]
+
+    # User-friendly explanation
+    st.subheader("Top Reasons:")
+    for feat, val in top_features:
+        reason = ""
+        if feat == "Credit_History":
+            reason = feature_reason_map[feat].get(int(input_df[feat][0]), "")
+        elif feat in feature_reason_map:
+            reason = feature_reason_map[feat]
+        if reason:
+            st.write(f"\u2022 {reason} ({'+' if val > 0 else ''}{round(val, 2)})")
+
+    # Optional SHAP bar chart (simplified)
+    with st.expander("Show SHAP Feature Impact Chart"):
+        fig, ax = plt.subplots()
+        shap.plots.bar(shap_values[0], show=False)
+        st.pyplot(fig)
