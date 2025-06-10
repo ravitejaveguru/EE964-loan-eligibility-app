@@ -5,16 +5,16 @@ import shap
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Load the model
+# Load the trained XGBoost model from JSON
 model = xgb.XGBClassifier()
 model.load_model("model.json")
 
+# Streamlit app setup
 st.set_page_config(page_title="Loan Eligibility Prediction", layout="wide")
 st.title("🏦 Loan Eligibility Prediction with Explainable AI")
-
 st.write("Fill in applicant details to check loan eligibility and explanation.")
 
-# Input fields
+# Input form
 gender = st.selectbox("Gender", ["Male", "Female"])
 married = st.selectbox("Married", ["Yes", "No"])
 dependents = st.selectbox("Dependents", ["0", "1", "2", "3+"])
@@ -27,10 +27,10 @@ loan_term = st.number_input("Loan Term (in days)", value=360)
 credit_history = st.selectbox("Credit History", [1.0, 0.0])
 property_area = st.selectbox("Property Area", ["Urban", "Semiurban", "Rural"])
 
-# Feature engineering
+# Combine income fields
 total_income = applicant_income + coapplicant_income
 
-# Create dataframe for prediction
+# Prepare input features as per training format
 input_dict = {
     'LoanAmount': [loan_amount],
     'Loan_Amount_Term': [loan_term],
@@ -54,16 +54,18 @@ input_dict = {
 }
 input_df = pd.DataFrame(input_dict)
 
-# Predict
+# Predict and explain
 if st.button("Predict"):
     prediction = model.predict(input_df)[0]
     prediction_text = "✅ Loan Approved" if prediction == 1 else "❌ Loan Rejected"
     st.subheader(f"Prediction: {prediction_text}")
 
-    # SHAP explanation
+    # SHAP explanation using a safe plotting method
+    st.subheader("Feature Impact Explanation:")
     explainer = shap.Explainer(model)
     shap_values = explainer(input_df)
-    #st.set_option('deprecation.showPyplotGlobalUse', False)
-    st.subheader("Feature Impact Explanation:")
-    shap.plots.waterfall(shap_values[0])
-    st.pyplot()
+
+    # Create the SHAP summary plot as a figure and show it
+    fig, ax = plt.subplots()
+    shap.plots.waterfall(shap_values[0], show=False)
+    st.pyplot(fig)
